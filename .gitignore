@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv*/
+venv/
+env/
+ENV/
+*.egg-info/
+prompt_enhancer.egg-info/
+.eggs/
+dist/
+build/AppDir/
+build/Prompt Enhancer.app/
+build/pyinstaller/
+build/icons/
+build/icon.iconset/
+build/runtime-x86_64
+release/
+*.egg
+pip-wheel-metadata/
+
+# Testing / type checkers
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Secrets and local env (API keys live in OS keyring; never commit these)
+.env
+.env.*
+!.env.example
+
+# Logs and local runtime (config/logs use ~/.prompt-enhancer/)
+*.log
+
+# Knowledge graph tooling (generated)
+graphify-out/
+.code-review-graph/
+
+# IDEs
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / agent caches (optional local)
+.cache/
+.local/
