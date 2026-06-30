@@ -47,12 +47,75 @@ if not errorlevel 1 (
 echo   X Python 3.10+ not found.
 echo.
 echo   Windows has a "Python" stub that redirects to the Microsoft Store.
-echo   Install real Python from:
-echo     https://www.python.org/downloads/
 echo.
+echo   Would you like to install Python automatically? (Y/N)
+set /p AUTO_INSTALL="  > "
+if /i "!AUTO_INSTALL!"=="y" goto :install_python
+if /i "!AUTO_INSTALL!"=="yes" goto :install_python
+
+echo.
+echo   Install manually from https://www.python.org/downloads/
 echo   During installation, CHECK "Add Python to PATH".
-echo   Then close this window and re-run install.bat
+echo   Then re-run install.bat
 echo.
+pause
+exit /b 1
+
+:install_python
+echo.
+echo   + Downloading Python 3.12...
+set "PY_URL=https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe"
+set "PY_INSTALLER=%TEMP%\python-installer.exe"
+
+:: Download using PowerShell
+powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%PY_URL%' -OutFile '%PY_INSTALLER%' -UseBasicParsing } catch { exit 1 }"
+if errorlevel 1 (
+    echo   X Failed to download Python installer.
+    echo     Download manually from https://www.python.org/downloads/
+    pause
+    exit /b 1
+)
+
+echo   + Installing Python (this may take a minute)...
+:: Install silently: add to PATH, install for all users, no UI
+"%PY_INSTALLER%" /quiet InstallAllUsers=1 PrependPath=1 Include_test=0
+if errorlevel 1 (
+    echo   X Python installation failed.
+    echo     Install manually from https://www.python.org/downloads/
+    del "%PY_INSTALLER%" 2>nul
+    pause
+    exit /b 1
+)
+
+del "%PY_INSTALLER%" 2>nul
+
+:: Refresh PATH for this session
+echo   + Refreshing PATH...
+set "PATH=C:\Program Files\Python312;C:\Program Files\Python312\Scripts;%PATH%"
+
+:: Verify installation
+where py >nul 2>&1
+if not errorlevel 1 (
+    py --version >nul 2>&1
+    if not errorlevel 1 (
+        set "PY_CMD=py"
+        echo   + Python installed successfully!
+        goto :py_found
+    )
+)
+
+where python >nul 2>&1
+if not errorlevel 1 (
+    python --version >nul 2>&1
+    if not errorlevel 1 (
+        set "PY_CMD=python"
+        echo   + Python installed successfully!
+        goto :py_found
+    )
+)
+
+echo   X Python was installed but not found in PATH.
+echo     Close this window, open a NEW command prompt, and re-run install.bat
 pause
 exit /b 1
 
