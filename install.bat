@@ -207,8 +207,9 @@ echo.
 echo   Hotkeys: Ctrl+Alt+E=Enhance  P=Pro  S=Shorten  X=Expand  C=Casual
 echo.
 echo   Troubleshooting:
-echo     Logs:     type "%USERPROFILE%\.prompt-enhancer\prompt-enhancer.log"
-echo     Restart:  taskkill /f /im pythonw.exe ^& start "" ".venv\Scripts\pythonw.exe" src/main.py
-echo     Settings: ".venv\Scripts\python.exe" src/main.py --settings
+echo     Logs:     Run from terminal to see output, or redirect:
+echo               ".venv\Scripts\python.exe" src\main.py 2> "%USERPROFILE%\.prompt-enhancer\debug.log"
+echo     Restart:  taskkill /f /im pythonw.exe ^& start "" ".venv\Scripts\pythonw.exe" src\main.py
+echo     Settings: ".venv\Scripts\python.exe" src\main.py --settings
 echo.
 pause

@@ -406,7 +406,10 @@ tail -30 ~/.prompt-enhancer/prompt-enhancer.log
 
 **Windows:**
 ```cmd
-type "%USERPROFILE%\.prompt-enhancer\prompt-enhancer.log"
+:: App output goes to stderr — redirect to a file to capture it:
+"%USERPROFILE%\.local\share\prompt-enhancer\.venv\Scripts\python.exe" "%USERPROFILE%\.local\share\prompt-enhancer\src\main.py" 2> "%USERPROFILE%\.prompt-enhancer\debug.log"
+:: Then view:
+type "%USERPROFILE%\.prompt-enhancer\debug.log"
 ```
 
 ### Restart the app
