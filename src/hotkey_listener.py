@@ -200,31 +200,23 @@ class HotkeyListener:
         pressed_mods: set = set()
 
         def on_press(key):
-            # Track modifiers
+            # Track modifiers — don't suppress them
             if key in (Key.ctrl, Key.ctrl_l, Key.ctrl_r):
                 pressed_mods.add("ctrl")
-                return False  # suppress
             elif key in (Key.alt, Key.alt_l, Key.alt_r, Key.alt_gr):
                 pressed_mods.add("alt")
-                return False
             elif key in (Key.shift, Key.shift_l, Key.shift_r):
                 pressed_mods.add("shift")
-                return False
             elif key in (Key.cmd, Key.cmd_l, Key.cmd_r):
                 pressed_mods.add("cmd")
-                return False
-
-            # Check if this key + current mods matches a hotkey
-            if isinstance(key, KeyCode) and key.char:
-                char = key.char.lower()
-                mod_fs = frozenset(pressed_mods)
-                if mod_fs in parsed and char in parsed[mod_fs]:
-                    parsed[mod_fs][char]()
-                    return False  # suppress the key
-            # Suppress any key while modifiers are held (prevents ē, inspect, etc.)
-            if pressed_mods:
-                return False
-            return None  # let other keys through
+            else:
+                # Non-modifier key pressed — check if it matches a hotkey combo
+                if isinstance(key, KeyCode) and key.char:
+                    char = key.char.lower()
+                    mod_fs = frozenset(pressed_mods)
+                    if mod_fs in parsed and char in parsed[mod_fs]:
+                        parsed[mod_fs][char]()
+                        return False  # suppress only this matched key
 
         def on_release(key):
             if key in (Key.ctrl, Key.ctrl_l, Key.ctrl_r):
@@ -235,10 +227,9 @@ class HotkeyListener:
                 pressed_mods.discard("shift")
             elif key in (Key.cmd, Key.cmd_l, Key.cmd_r):
                 pressed_mods.discard("cmd")
-            return None  # don't suppress releases
 
         listener = keyboard.Listener(
-            on_press=on_press, on_release=on_release, suppress=True
+            on_press=on_press, on_release=on_release, suppress=False
         )
 
         with self._lock:
