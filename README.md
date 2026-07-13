@@ -465,7 +465,7 @@ python3 -c "import keyring; keyring.delete_password('prompt-enhancer', 'nvidia-a
 
 ## Author
 
-**Akash Soni** — [hi@akashsoni.com](mailto:hi@akashsoni.com) — [akashsoni.com](https://akashsoni.com)
+**Akash Soni** — [akash.soni.3101@gmail.com](mailto:akash.soni.3101@gmail.com)
 
 [![GitHub](https://img.shields.io/badge/GitHub-iamakashsoni-181717?logo=github)](https://github.com/iamakashsoni)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-iamakashsoni-0A66C2?logo=linkedin)](https://www.linkedin.com/in/iamakashsoni/)
