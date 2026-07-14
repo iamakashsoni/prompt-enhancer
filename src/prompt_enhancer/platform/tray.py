@@ -5,7 +5,7 @@ The icon is generated programmatically — no external asset needed.
 import threading
 
 import pystray
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from pystray import Menu
 from pystray import MenuItem as Item
 
@@ -26,14 +26,15 @@ def _make_icon(state: str = "idle", size: int = 64) -> Image.Image:
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     draw.ellipse([2, 2, size - 2, size - 2], fill=bg, outline=fg, width=3)
-    try:
-        font = ImageFont.truetype("arial.ttf", size // 3)
-    except Exception:
-        font = ImageFont.load_default()
-    text = "PE"
-    bbox = draw.textbbox((0, 0), text, font=font)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    draw.text(((size - tw) / 2, (size - th) / 2 - 2), text, fill=fg, font=font)
+    coords = [
+        (0.52 * size, 0.18 * size),
+        (0.32 * size, 0.52 * size),
+        (0.46 * size, 0.52 * size),
+        (0.40 * size, 0.82 * size),
+        (0.66 * size, 0.48 * size),
+        (0.52 * size, 0.48 * size),
+    ]
+    draw.polygon(coords, fill=fg)
     return img
 
 
