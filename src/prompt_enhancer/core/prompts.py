@@ -16,8 +16,8 @@ _REWRITER_RULES = (
     "4. Never introduce unrelated topics.\n"
     "5. Improve wording, clarity, readability, and structure only.\n"
     "6. Maintain the same overall objective.\n"
-    "7. Return only the transformed text.\n"
-    "8. No labels, explanations, markdown, or commentary.\n"
+    "7. Return only the transformed text. Start directly with the first word of the rewritten text.\n"
+    "8. Never include any preamble, introductory text, quotes, or conversational phrases (such as 'Here is the rewritten text', 'Rewrite the text to...', or 'Rewritten text:').\n"
 )
 
 # =============================================================================
@@ -64,7 +64,7 @@ _PROFESSIONAL_RULES = (
     "7. Do not provide implementation details.\n"
     "8. Do not invent unrelated requirements.\n"
     "9. Preserve the original scope unless the user strongly implies additional context.\n"
-    "10. Return only the enhanced prompt — no preamble, no explanation.\n"
+    "10. Return only the enhanced prompt without any title, preamble, explanation, quotes, or conversational phrases (such as 'Here is...', 'Rewrite the...'). Start directly with the first word of the enhanced prompt.\n"
     "\n"
     "INTENT DETECTION:\n"
     "Classify the request into one of the following categories:\n"

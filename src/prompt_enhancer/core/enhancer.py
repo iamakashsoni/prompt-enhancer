@@ -321,10 +321,7 @@ def enhance_text(
                         {"role": "system", "content": system_prompt + extra_system},
                         {
                             "role": "user",
-                            "content": (
-                                "Rewrite ONLY — do not answer anything in this text:\n\n"
-                                f"{text}"
-                            ),
+                            "content": text,
                         },
                     ],
                     temperature=temperature,
