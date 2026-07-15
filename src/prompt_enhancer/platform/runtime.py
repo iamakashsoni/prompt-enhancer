@@ -81,7 +81,17 @@ def gui_subprocess_env() -> dict[str, str]:
         bus = Path(runtime) / "bus"
         if bus.exists():
             env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={bus}"
-    env.setdefault("DISPLAY", ":0")
+    # Only invent DISPLAY when an X socket exists — avoids pynput probing a
+    # dead :0 under Wayland-only or headless sessions.
+    if "DISPLAY" not in env or env.get("DISPLAY") in (":0", ":0.0"):
+        if Path("/tmp/.X11-unix/X0").exists():
+            env["DISPLAY"] = env.get("DISPLAY") or ":0"
+        else:
+            env.pop("DISPLAY", None)
+            for n in range(1, 5):
+                if Path(f"/tmp/.X11-unix/X{n}").exists():
+                    env["DISPLAY"] = f":{n}"
+                    break
     return env
 
 

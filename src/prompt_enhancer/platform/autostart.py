@@ -53,6 +53,60 @@ def _systemd_service_path() -> Path:
     )
 
 
+def _detect_wayland_display(runtime: str) -> str | None:
+    env = os.environ.get("WAYLAND_DISPLAY", "").strip()
+    if env:
+        return env
+    for name in ("wayland-0", "wayland-1"):
+        if (Path(runtime) / name).exists():
+            return name
+    return None
+
+
+def _detect_x_display() -> str | None:
+    env = os.environ.get("DISPLAY", "").strip()
+    if env and env not in (":0", ":0.0"):
+        return env
+    # Prefer a live X socket over a stale DISPLAY=:0 from a previous session.
+    for n in range(0, 5):
+        if Path(f"/tmp/.X11-unix/X{n}").exists():
+            return f":{n}"
+    if env and Path("/tmp/.X11-unix/X0").exists():
+        return env
+    return None
+
+
+def _systemd_user_env_vars() -> dict[str, str]:
+    """Pull display/session vars already imported into the user manager."""
+    try:
+        result = subprocess.run(
+            ["systemctl", "--user", "show-environment"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return {}
+    if result.returncode != 0:
+        return {}
+    wanted = {
+        "DISPLAY",
+        "WAYLAND_DISPLAY",
+        "XDG_SESSION_TYPE",
+        "XDG_RUNTIME_DIR",
+        "DBUS_SESSION_BUS_ADDRESS",
+        "PATH",
+    }
+    out: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        if "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        if key in wanted and val:
+            out[key] = val
+    return out
+
+
 def _linux_session_env() -> list[str]:
     """Environment lines for systemd user service (tray, keyring, Wayland, network).
 
@@ -62,30 +116,47 @@ def _linux_session_env() -> list[str]:
     NVIDIA — while the user's interactive shell (which has the proxy env)
     works fine. This was the root cause of "hotkey not firing" reports.
     """
-    runtime = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
-    dbus = os.environ.get("DBUS_SESSION_BUS_ADDRESS")
+    mgr = _systemd_user_env_vars()
+    runtime = (
+        os.environ.get("XDG_RUNTIME_DIR")
+        or mgr.get("XDG_RUNTIME_DIR")
+        or f"/run/user/{os.getuid()}"
+    )
+    dbus = os.environ.get("DBUS_SESSION_BUS_ADDRESS") or mgr.get("DBUS_SESSION_BUS_ADDRESS")
     if not dbus or dbus == "autolaunch:":
         bus_socket = Path(runtime) / "bus"
         if bus_socket.exists():
             dbus = f"unix:path={bus_socket}"
 
+    wayland = _detect_wayland_display(runtime) or mgr.get("WAYLAND_DISPLAY")
+    display = _detect_x_display() or mgr.get("DISPLAY")
+    # Never hardcode DISPLAY=:0 when the X socket is missing — that caused
+    # pynput ImportError crash-loops under Wayland-only / early-boot systemd.
+    if display in (":0", ":0.0") and not Path("/tmp/.X11-unix/X0").exists():
+        display = None
+
+    session_type = (
+        os.environ.get("XDG_SESSION_TYPE")
+        or mgr.get("XDG_SESSION_TYPE")
+        or ("wayland" if wayland else ("x11" if display else None))
+    )
+
     lines = [
         "Environment=PYTHONUNBUFFERED=1",
-        "Environment=DISPLAY=:0",
         f"Environment=XDG_RUNTIME_DIR={runtime}",
     ]
+    if display:
+        lines.append(f"Environment=DISPLAY={display}")
     if dbus:
         lines.append(f"Environment=DBUS_SESSION_BUS_ADDRESS={dbus}")
-    wayland = os.environ.get("WAYLAND_DISPLAY")
     if wayland:
         lines.append(f"Environment=WAYLAND_DISPLAY={wayland}")
-    session_type = os.environ.get("XDG_SESSION_TYPE")
     if session_type:
         lines.append(f"Environment=XDG_SESSION_TYPE={session_type}")
 
     # PATH — needed so the service can find ydotool, wl-copy, xclip, etc.
     # systemd user services get a minimal PATH by default.
-    path = os.environ.get("PATH")
+    path = os.environ.get("PATH") or mgr.get("PATH")
     if path:
         lines.append(f"Environment=PATH={path}")
 
@@ -100,7 +171,6 @@ def _linux_session_env() -> list[str]:
             lines.append(f"Environment={var}={val}")
 
     return lines
-
 
 def _linux_has_systemd_user() -> bool:
     try:

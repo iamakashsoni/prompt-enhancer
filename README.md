@@ -389,6 +389,7 @@ Or: right-click the ⚡ PE tray icon → Settings.
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| Service crash-loops: `Can't connect to display ":0"` | Stale `DISPLAY=:0` in systemd unit; Wayland/no X | Update + `python src/main.py enable` to regenerate the unit, then `systemctl --user restart prompt-enhancer.service` |
 | Hotkey fires but "Request timed out" | NVIDIA API unreachable, or model too slow | Check `[net]` log lines at startup. Try a smaller model, or switch to Ollama (local). |
 | Hotkey fires but "no text captured" | Target window lost focus during capture | Keep the target window focused after pressing the hotkey (~0.3s). |
 | "paste failed — is ydotoold running?" | ydotoold not running on Wayland | `sudo ydotoold &` or reboot (installer sets it up). |

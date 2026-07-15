@@ -602,3 +602,55 @@ class TestParseCombo:
         mods, key = linux_input._parse_pynput_combo("  <ctrl> + <alt> + e  ")
         assert mods == frozenset({"ctrl", "alt"})
         assert key == "e"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  linux_input session / display discovery (systemd DISPLAY=:0 crash)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestSessionEnv:
+    def test_stale_display_dropped_when_wayland(self, monkeypatch, tmp_path):
+        runtime = tmp_path / "run"
+        runtime.mkdir()
+        (runtime / "wayland-0").touch()
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+        monkeypatch.setenv("DISPLAY", ":0")
+        monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+        monkeypatch.delenv("XDG_SESSION_TYPE", raising=False)
+        monkeypatch.setattr(linux_input.os.path, "exists", lambda p: (
+            str(p).endswith("wayland-0") or str(p) == str(runtime / "wayland-0")
+            if "wayland" in str(p) else False
+        ))
+        # Use real path.exists for the wayland socket we created; force X0 missing.
+        real_exists = linux_input.os.path.exists
+
+        def _exists(path):
+            s = str(path)
+            if s.endswith("/X0") or s.endswith("X0"):
+                return False
+            return real_exists(path)
+
+        monkeypatch.setattr(linux_input.os.path, "exists", _exists)
+        linux_input.ensure_session_env()
+        assert linux_input.os.environ.get("WAYLAND_DISPLAY") == "wayland-0"
+        assert "DISPLAY" not in linux_input.os.environ or not linux_input.os.environ.get("DISPLAY")
+        assert linux_input.is_wayland() is True
+        assert linux_input.prefer_evdev_hotkeys() is True
+
+    def test_explicit_x11_session_not_wayland(self, monkeypatch):
+        monkeypatch.setenv("XDG_SESSION_TYPE", "x11")
+        monkeypatch.setenv("DISPLAY", ":0")
+        monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+        monkeypatch.setattr(
+            linux_input.os.path, "exists",
+            lambda p: str(p).endswith("X0"),
+        )
+        assert linux_input.is_wayland() is False
+        assert linux_input.prefer_evdev_hotkeys() is False
+
+    def test_no_display_prefers_evdev(self, monkeypatch):
+        monkeypatch.setenv("XDG_SESSION_TYPE", "x11")
+        monkeypatch.delenv("DISPLAY", raising=False)
+        monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+        monkeypatch.setattr(linux_input.os.path, "exists", lambda _p: False)
+        assert linux_input.prefer_evdev_hotkeys() is True

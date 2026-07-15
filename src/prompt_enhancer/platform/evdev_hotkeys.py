@@ -16,10 +16,84 @@ import time
 from typing import Callable
 
 
+def ensure_session_env() -> None:
+    """Fill DISPLAY / WAYLAND_DISPLAY / XDG_SESSION_TYPE from the live session.
+
+    systemd user units often bake DISPLAY=:0 at install time. That breaks when
+    the session is Wayland-only, X is not on :0 yet, or the unit was installed
+    over SSH. Discover sockets under XDG_RUNTIME_DIR /tmp instead of trusting
+    a stale hardcoded DISPLAY.
+    """
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    os.environ.setdefault("XDG_RUNTIME_DIR", runtime)
+
+    wayland = os.environ.get("WAYLAND_DISPLAY", "").strip()
+    if not wayland:
+        for name in ("wayland-0", "wayland-1"):
+            if os.path.exists(os.path.join(runtime, name)):
+                os.environ["WAYLAND_DISPLAY"] = name
+                wayland = name
+                break
+
+    display = os.environ.get("DISPLAY", "").strip()
+    if not display:
+        for n in range(0, 5):
+            sock = f"/tmp/.X11-unix/X{n}"
+            if os.path.exists(sock):
+                os.environ["DISPLAY"] = f":{n}"
+                display = f":{n}"
+                break
+    elif display in (":0", ":0.0") and not os.path.exists("/tmp/.X11-unix/X0"):
+        # Stale DISPLAY=:0 from systemd — drop it so pynput is not forced onto
+        # a dead socket when Wayland (or another X display) is the real session.
+        if wayland:
+            os.environ.pop("DISPLAY", None)
+            display = ""
+        else:
+            for n in range(1, 5):
+                sock = f"/tmp/.X11-unix/X{n}"
+                if os.path.exists(sock):
+                    os.environ["DISPLAY"] = f":{n}"
+                    display = f":{n}"
+                    break
+
+    session = os.environ.get("XDG_SESSION_TYPE", "").strip().lower()
+    if not session:
+        if wayland:
+            os.environ["XDG_SESSION_TYPE"] = "wayland"
+        elif display:
+            os.environ["XDG_SESSION_TYPE"] = "x11"
+
+
 def is_wayland() -> bool:
-    if os.environ.get("XDG_SESSION_TYPE", "").lower() == "x11":
+    ensure_session_env()
+    session = os.environ.get("XDG_SESSION_TYPE", "").lower()
+    if session == "x11":
         return False
-    return bool(os.environ.get("WAYLAND_DISPLAY"))
+    if session == "wayland":
+        return True
+    if os.environ.get("WAYLAND_DISPLAY"):
+        return True
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    for name in ("wayland-0", "wayland-1"):
+        if os.path.exists(os.path.join(runtime, name)):
+            return True
+    return False
+
+
+def prefer_evdev_hotkeys() -> bool:
+    """Use evdev when Wayland, or when no usable X display exists for pynput."""
+    if is_wayland():
+        return True
+    ensure_session_env()
+    display = os.environ.get("DISPLAY", "").strip()
+    if not display:
+        return True
+    # ":0" / ":0.0" → X0; ":1.0" → X1
+    num = display.lstrip(":").split(".", 1)[0]
+    if not num.isdigit():
+        return True
+    return not os.path.exists(f"/tmp/.X11-unix/X{num}")
 
 
 def simulate_key_combo(mod_char: tuple[str, str]) -> bool:

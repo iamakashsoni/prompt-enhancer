@@ -149,6 +149,9 @@ def _handle_trigger(mode: str, tray: TrayApp) -> None:
 
 
 def main() -> None:
+    from prompt_enhancer.platform.evdev_hotkeys import ensure_session_env
+
+    ensure_session_env()
     acquire_single_instance()
 
     if not get_api_key():

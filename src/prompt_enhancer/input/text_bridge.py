@@ -15,14 +15,9 @@ import pyperclip
 from prompt_enhancer.core.logging import log
 from prompt_enhancer.platform.evdev_hotkeys import is_wayland, simulate_key_combo
 
-# On Wayland, key injection is via ydotool — no pynput Controller needed.
-# On X11, pynput.Controller handles Ctrl+C / Ctrl+V.
-if not is_wayland():
-    from pynput.keyboard import Controller
-    _keyboard = Controller()
-else:
-    _keyboard = None
-
+# Key injection: ydotool on Wayland, pynput Controller (lazy) on X11
+# via simulate_key_combo. Do not import pynput at module level — it
+# connects to DISPLAY and crashes systemd units when X is unavailable.
 _SENTINEL = "__PROMPT_ENHANCER_CAPTURE_SENTINEL_7f3a__"
 
 

@@ -9,15 +9,21 @@ Design:
   the 'input' group), so hotkeys work even when the focused app is a native
   Wayland client that pynput's X11 backend cannot see.
 - X11: falls back to pynput.keyboard.GlobalHotKeys.
+- pynput is imported lazily — its import connects to DISPLAY and would crash
+  the whole process under systemd when X is unavailable (Wayland-only / early boot).
 """
+from __future__ import annotations
+
 import threading
 import time
-from typing import Callable
-
-from pynput import keyboard
+from typing import Any, Callable
 
 from prompt_enhancer.core.config import load_config
-from prompt_enhancer.platform.evdev_hotkeys import EvdevGlobalHotkeys, is_wayland
+from prompt_enhancer.platform.evdev_hotkeys import (
+    EvdevGlobalHotkeys,
+    ensure_session_env,
+    prefer_evdev_hotkeys,
+)
 
 OnTrigger = Callable[[str], None]
 
@@ -25,7 +31,7 @@ OnTrigger = Callable[[str], None]
 class HotkeyListener:
     def __init__(self, on_trigger: OnTrigger) -> None:
         self._on_trigger = on_trigger
-        self._current: keyboard.GlobalHotKeys | None = None
+        self._current: Any = None
         self._lock = threading.Lock()
         self._stopped = False
 
@@ -69,12 +75,49 @@ class HotkeyListener:
 
     # ── internal ─────────────────────────────────────────────────────────────
 
+    def _run_evdev(self, hotkeys_cfg: dict[str, str]) -> None:
+        def _make_evdev_cb(m: str) -> Callable:
+            def cb() -> None:
+                self._on_trigger(m)
+            return cb
+
+        evdev_mapping: dict[str, Callable] = {}
+        for mode, combo in hotkeys_cfg.items():
+            combo = combo.strip()
+            if combo:
+                evdev_mapping[combo] = _make_evdev_cb(mode)
+        hk = EvdevGlobalHotkeys(evdev_mapping)
+        with self._lock:
+            self._current = hk
+        try:
+            hk.start()
+            hk.join()
+        finally:
+            with self._lock:
+                if self._current is hk:
+                    self._current = None
+
+    def _run_pynput(self, mapping: dict[str, Callable]) -> None:
+        from pynput import keyboard
+
+        hk = keyboard.GlobalHotKeys(mapping)
+        with self._lock:
+            self._current = hk
+        try:
+            hk.start()
+            hk.join()
+        finally:
+            with self._lock:
+                if self._current is hk:
+                    self._current = None
+
     def _launch(self) -> None:
         """
         Create and run one GlobalHotKeys instance.
         Blocks until the listener is stopped (via reload() or stop()).
         Lock is released before join() to prevent deadlock with reload().
         """
+        ensure_session_env()
         config = load_config()
         hotkeys_cfg: dict[str, str] = config.get("hotkeys", {})
 
@@ -99,41 +142,17 @@ class HotkeyListener:
                 time.sleep(1)
             return
 
-        if is_wayland() and EvdevGlobalHotkeys:
-            # Evdev already debounces and runs cb on its own thread — no double-wrap.
-            def _make_evdev_cb(m: str) -> Callable:
-                def cb() -> None:
-                    self._on_trigger(m)
-                return cb
-
-            evdev_mapping: dict[str, Callable] = {}
-            for mode, combo in hotkeys_cfg.items():
-                combo = combo.strip()
-                if combo:
-                    evdev_mapping[combo] = _make_evdev_cb(mode)
-            hk = EvdevGlobalHotkeys(evdev_mapping)
-            with self._lock:
-                self._current = hk  # type: ignore[assignment]
-            try:
-                hk.start()
-                hk.join()
-            finally:
-                with self._lock:
-                    if self._current is hk:
-                        self._current = None
+        if prefer_evdev_hotkeys():
+            self._run_evdev(hotkeys_cfg)
             return
 
-        # X11 fallback — pynput GlobalHotKeys
-        hk = keyboard.GlobalHotKeys(mapping)
-
-        # Store reference BEFORE starting, under the lock
-        with self._lock:
-            self._current = hk
-
         try:
-            hk.start()
-            hk.join()   # ← blocks here; lock is NOT held → reload() can run safely
-        finally:
-            with self._lock:
-                if self._current is hk:
-                    self._current = None
+            self._run_pynput(mapping)
+        except ImportError as exc:
+            # pynput backend probes X at import time — fall back to evdev
+            print(
+                f"[HotkeyListener] pynput unavailable ({exc!r}) — "
+                "falling back to evdev",
+                flush=True,
+            )
+            self._run_evdev(hotkeys_cfg)
