@@ -37,23 +37,24 @@ API_PROVIDERS = (
     API_PROVIDER_DISABLED,
 )
 
-DEFAULT_MODEL = "google/gemma-3-4b-it"
+DEFAULT_MODEL = "mistralai/mistral-7b-instruct-v0.3"
+OBSOLETE_MODELS: set[str] = {
+    "meta/llama3-8b-instruct",
+    "meta/llama3-70b-instruct",
+    "meta/llama-3.1-8b-instruct",
+    "meta/llama-3.1-70b-instruct",
+}
 
-# Top 4 lightweight NVIDIA NIM models — prioritizing ranking performance per
-# parameter. Fast on the free tier, and top-tier in their size
-# class on MMLU/HumanEval/MT-Bench.
+# Top lightweight/reliable NVIDIA NIM models — prioritizing ranking performance per
+# parameter. These are stable models on the free tier that do not usually trigger EULA loops.
 CURATED_MODELS = [
-    "google/gemma-3-4b-it",
-    "google/gemma-3-12b-it",
-    "ibm/granite-3.0-8b-instruct",
-    "nvidia/mistral-nemo-minitron-8b-8k-instruct",
+    "mistralai/mistral-7b-instruct-v0.3",
+    "mistralai/mixtral-8x22b-v0.1",
+    "microsoft/phi-3.5-moe-instruct",
+    "databricks/dbrx-instruct",
 ]
 
 OLLAMA_DEFAULT_URL = "http://localhost:11434/v1"
-
-# Models removed from the curated list — too large/slow for the free tier, or ended.
-# Users with these in their config get auto-migrated to DEFAULT_MODEL.
-OBSOLETE_MODELS = set()
 
 DEFAULT_CONFIG: dict = {
     "config_version": CONFIG_VERSION,
