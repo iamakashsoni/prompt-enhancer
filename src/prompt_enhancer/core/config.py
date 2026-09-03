@@ -37,7 +37,7 @@ API_PROVIDERS = (
     API_PROVIDER_DISABLED,
 )
 
-DEFAULT_MODEL = "mistralai/mistral-7b-instruct-v0.3"
+DEFAULT_MODEL = "mistralai/mistral-nemotron"
 OBSOLETE_MODELS: set[str] = {
     "meta/llama3-8b-instruct",
     "meta/llama3-70b-instruct",
@@ -45,14 +45,9 @@ OBSOLETE_MODELS: set[str] = {
     "meta/llama-3.1-70b-instruct",
 }
 
-# Top lightweight/reliable NVIDIA NIM models — prioritizing ranking performance per
-# parameter. These are stable models on the free tier that do not usually trigger EULA loops.
+# The primary optimized NVIDIA NIM model used for prompt enhancement.
 CURATED_MODELS = [
-    "mistralai/mistral-7b-instruct-v0.3",
     "mistralai/mistral-nemotron",
-    "mistralai/mixtral-8x22b-v0.1",
-    "microsoft/phi-3.5-moe-instruct",
-    "databricks/dbrx-instruct",
 ]
 
 OLLAMA_DEFAULT_URL = "http://localhost:11434/v1"
