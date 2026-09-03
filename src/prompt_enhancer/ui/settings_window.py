@@ -255,7 +255,7 @@ class SettingsWindow:
         if current_model not in models:
             models = [current_model] + models
         self._model_var = ctk.StringVar(value=current_model)
-        self._model_menu = ctk.CTkOptionMenu(
+        self._model_menu = ctk.CTkComboBox(
             scroll, variable=self._model_var, values=models, width=400,
         )
         self._model_menu.pack(anchor="w", **pad)
