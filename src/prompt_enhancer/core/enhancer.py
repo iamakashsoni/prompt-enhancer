@@ -377,27 +377,33 @@ def test_connection(
         return (completion.choices[0].message.content or "").strip()
     except Exception as exc:
         msg = str(exc)
+        is_nvidia = (base_url == NVIDIA_BASE_URL)
+        provider_name = "NVIDIA API" if is_nvidia else "Server"
+
         if "404" in msg:
-            if model == DEFAULT_MODEL:
+            if model == DEFAULT_MODEL and is_nvidia:
                 raise ValueError(
-                    f"Model not found on NVIDIA API: {model!r}. "
+                    f"Model not found on {provider_name}: {model!r}. "
                     "It may be temporarily unavailable or require EULA acceptance at build.nvidia.com."
                 ) from exc
+            
+            hint = "pull the model" if not is_nvidia else f"pick {DEFAULT_MODEL!r} in Settings"
             raise ValueError(
                 f"Model not found: {model!r}. "
-                f"Pick {DEFAULT_MODEL!r} in Settings → AI Model, click Save, "
-                f"then Test Connection again."
+                f"Please {hint}, click Save, then Test Connection again."
             ) from exc
+            
         if "410" in msg or "Gone" in msg:
-            if model == DEFAULT_MODEL:
+            if model == DEFAULT_MODEL and is_nvidia:
                 raise ValueError(
-                    f"Model is no longer available on NVIDIA API: {model!r} (410 Gone)."
+                    f"Model is no longer available on {provider_name}: {model!r} (410 Gone)."
                 ) from exc
             raise ValueError(
                 f"Model {model!r} has reached end-of-life (410 Gone). "
                 f"Pick {DEFAULT_MODEL!r} in Settings → AI Model, click Save, "
                 f"then Test Connection again."
             ) from exc
+            
         if "401" in msg or "Unauthorized" in msg:
             raise ValueError(
                 "Authentication failed (401). Check your nvapi- key at build.nvidia.com."

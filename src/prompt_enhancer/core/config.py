@@ -191,13 +191,15 @@ def resolve_api_endpoint(config: dict) -> tuple[str, str]:
     if provider == API_PROVIDER_DISABLED:
         raise ValueError("API disabled")
     if provider == API_PROVIDER_OLLAMA:
-        base_url = config.get("ollama_url", OLLAMA_DEFAULT_URL).strip()
+        base_url = config.get("ollama_url", OLLAMA_DEFAULT_URL).strip().rstrip("/")
+        if not base_url.endswith("/v1"):
+            base_url += "/v1"
         err = validate_custom_base_url(base_url)
         if err:
             raise ValueError(err)
         # Ollama doesn't require an API key, but the openai SDK needs a non-empty
         # string. Use "not-needed" — Ollama ignores it.
-        return base_url.rstrip("/"), "not-needed"
+        return base_url, "not-needed"
     if provider == API_PROVIDER_CUSTOM:
         base_url = config.get("custom_api_base_url", "").strip()
         err = validate_custom_base_url(base_url)

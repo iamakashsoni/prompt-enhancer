@@ -534,7 +534,10 @@ class SettingsWindow:
 
     def _on_fetch_ollama_models(self) -> None:
         """Fetch installed models from the Ollama server and populate the model dropdown."""
-        url = self._ollama_url_var.get().strip()
+        url = self._ollama_url_var.get().strip().rstrip("/")
+        if url.endswith("/v1"):
+            url = url[:-3]  # The Ollama native /api/tags endpoint doesn't use the /v1 suffix
+        
         url_err = validate_custom_base_url(url)
         if url_err:
             self._ollama_status_label.configure(
@@ -613,6 +616,8 @@ class SettingsWindow:
                 api_key = "not-needed"
         elif provider == API_PROVIDER_OLLAMA:
             base_url = self._ollama_url_var.get().strip().rstrip("/")
+            if not base_url.endswith("/v1"):
+                base_url += "/v1"
             url_err = validate_custom_base_url(base_url)
             if url_err:
                 self._test_label.configure(text=f"✗ {url_err}", text_color="#e74c3c")
