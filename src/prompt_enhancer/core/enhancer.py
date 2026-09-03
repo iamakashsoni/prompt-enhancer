@@ -378,8 +378,23 @@ def test_connection(
     except Exception as exc:
         msg = str(exc)
         if "404" in msg:
+            if model == DEFAULT_MODEL:
+                raise ValueError(
+                    f"Model not found on NVIDIA API: {model!r}. "
+                    "It may be temporarily unavailable or require EULA acceptance at build.nvidia.com."
+                ) from exc
             raise ValueError(
                 f"Model not found: {model!r}. "
+                f"Pick {DEFAULT_MODEL!r} in Settings → AI Model, click Save, "
+                f"then Test Connection again."
+            ) from exc
+        if "410" in msg or "Gone" in msg:
+            if model == DEFAULT_MODEL:
+                raise ValueError(
+                    f"Model is no longer available on NVIDIA API: {model!r} (410 Gone)."
+                ) from exc
+            raise ValueError(
+                f"Model {model!r} has reached end-of-life (410 Gone). "
                 f"Pick {DEFAULT_MODEL!r} in Settings → AI Model, click Save, "
                 f"then Test Connection again."
             ) from exc

@@ -640,12 +640,14 @@ class SettingsWindow:
 
         def on_error(exc: BaseException) -> None:
             msg = str(exc)
-            if "404" in msg or "Model not found" in msg:
-                self._model_var.set(DEFAULT_MODEL)
-                msg = (
-                    f"{msg} Switched model dropdown to {DEFAULT_MODEL} — "
-                    "click Test Connection again."
-                )
+            if ("404" in msg or "Model not found" in msg or "end-of-life" in msg or "410" in msg):
+                current_model = self._model_var.get().strip()
+                if current_model != DEFAULT_MODEL:
+                    self._model_var.set(DEFAULT_MODEL)
+                    msg = (
+                        f"{msg} Switched model dropdown to {DEFAULT_MODEL} — "
+                        "click Test Connection again."
+                    )
             self._test_label.configure(text=f"✗ {msg}", text_color="#e74c3c")
 
         self._run_async(
