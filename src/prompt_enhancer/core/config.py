@@ -49,6 +49,7 @@ OBSOLETE_MODELS: set[str] = {
 # parameter. These are stable models on the free tier that do not usually trigger EULA loops.
 CURATED_MODELS = [
     "mistralai/mistral-7b-instruct-v0.3",
+    "mistralai/mistral-nemotron",
     "mistralai/mixtral-8x22b-v0.1",
     "microsoft/phi-3.5-moe-instruct",
     "databricks/dbrx-instruct",
